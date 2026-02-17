@@ -3328,12 +3328,16 @@ world8.afterEvents.entityDie.subscribe((e) => {
   if (e.deadEntity.typeId !== "minecraft:player") return;
   let hearts = getObjective("featherlifesteal:hearts");
   let player = e.deadEntity;
-  if (e.damageSource && e.damageSource.damagingEntity && e.damageSource.damagingEntity.typeId === "minecraft:player" && world8.getDynamicProperty("maxHearts") < hearts.getScore(e.damageSource.damagingEntity)) {
-    let damagingEntity = e.damageSource.damagingEntity;
-    hearts.setScore(damagingEntity, hearts.getScore(damagingEntity) + 1);
-    damagingEntity.sendMessage("\xA7aGained 1 heart by killing " + e.deadEntity.name);
+  let ds = e.damageSource;
+  let dse = ds?.damagingEntity;
+  if (dse && dse.typeId === "minecraft:player") world8.getPlayers().find((_2) => _2.id === dse.id);
+  console.log(JSON.stringify(dse ?? null));
+  console.log(dse?.typeId);
+  if (ds && dse && dse.typeId === "minecraft:player" && world8.getDynamicProperty("maxHearts") > hearts.getScore(dse)) {
+    hearts.setScore(dse, hearts.getScore(dse) + 1);
+    dse.sendMessage("\xA7aGained 1 heart by killing " + e.deadEntity.name);
     hearts.setScore(e.deadEntity, hearts.getScore(e.deadEntity) - 1);
-    e.deadEntity.sendMessage("\xA7cYou lost 1 heart by dying to " + damagingEntity.name);
+    e.deadEntity.sendMessage("\xA7cYou lost 1 heart by dying to " + dse.name);
     if (hearts.getScore(player.scoreboardIdentity) < 1) {
       dead_default.addDeath(player.id);
       if (player.playerPermissionLevel >= 2) {

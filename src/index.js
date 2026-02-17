@@ -9,6 +9,7 @@ import { ActionForm } from './lib/form_func'
 import players from './api/players';
 let featherInstalled = false;
 let featherVersion = null;
+let featherHandleHeartDropping = false;
 
 system.run(async () => {
     await system.waitTicks(10)
@@ -21,6 +22,7 @@ communication.register('featherlifesteal:verifyFeatherInstalled', ({ args }) => 
     featherInstalled = true;
     featherVersion = args[0];
     console.log('[Lifesteal] Verified Feather installed, version: ' + featherVersion)
+    communication.unregister('featherlifesteal:verifyFeatherInstalled')
 })
 system.afterEvents.scriptEventReceive.subscribe((e) => {
     if (!e.sourceEntity) return;
@@ -101,18 +103,21 @@ world.afterEvents.entityDie.subscribe((e) => {
     if (e.deadEntity.typeId !== 'minecraft:player') return;
     let hearts = getObjective('featherlifesteal:hearts')
     let player = e.deadEntity
+    let ds = e.damageSource
+    let dse = ds?.damagingEntity
+    if(dse && dse.typeId === 'minecraft:player') world.getPlayers().find((_) => _.id===dse.id)
+    console.log(JSON.stringify(dse ?? null))
+    console.log(dse?.typeId)
     if (
-        e.damageSource &&
-        e.damageSource.damagingEntity &&
-        e.damageSource.damagingEntity.typeId === 'minecraft:player' &&
-        world.getDynamicProperty('maxHearts') <
-        hearts.getScore(e.damageSource.damagingEntity)
+        ds &&
+        dse &&
+        dse.typeId === 'minecraft:player' &&
+        world.getDynamicProperty('maxHearts') > hearts.getScore(dse)
     ) {
-        let damagingEntity = e.damageSource.damagingEntity
-        hearts.setScore(damagingEntity, hearts.getScore(damagingEntity) + 1)
-        damagingEntity.sendMessage('§aGained 1 heart by killing ' + e.deadEntity.name)
+        hearts.setScore(dse, hearts.getScore(dse) + 1)
+        dse.sendMessage('§aGained 1 heart by killing ' + e.deadEntity.name)
         hearts.setScore(e.deadEntity, hearts.getScore(e.deadEntity) - 1)
-        e.deadEntity.sendMessage('§cYou lost 1 heart by dying to ' + damagingEntity.name)
+        e.deadEntity.sendMessage('§cYou lost 1 heart by dying to ' + dse.name)
         if (hearts.getScore(player.scoreboardIdentity) < 1) {
             dead.addDeath(player.id)
             if (player.playerPermissionLevel >= 2) {
